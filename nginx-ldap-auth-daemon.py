@@ -59,39 +59,39 @@ class AuthHandler(BaseHTTPRequestHandler):
                 return True
 
         ctx['action'] = 'performing authorization'
-        auth_header = self.headers.get('Authorization')
-        auth_cookie = self.get_cookie(ctx['cookiename'])
+        # auth_header = self.headers.get('Authorization')
+        auth_header = self.headers.get('X-Ldap-Auth-User')
+        user = auth_header
+        self.log_message('using username: %s' % user)
+        # auth_cookie = self.get_cookie(ctx['cookiename'])
 
-        if auth_cookie != None and auth_cookie != '':
-            auth_header = "Basic " + auth_cookie
-            self.log_message("using username/password from cookie %s" %
-                             ctx['cookiename'])
-        else:
-            self.log_message("using username/password from authorization header")
+        # if auth_cookie != None and auth_cookie != '':
+        #    auth_header = "Basic " + auth_cookie
+        #    self.log_message("using username/password from cookie %s" %
+        #                      ctx['cookiename'])
+        # else:
+        #     self.log_message("using username/password from authorization header")
 
-        if auth_header is None or not auth_header.lower().startswith('basic '):
-
+        # if auth_header is None or not auth_header.lower().startswith('basic '):
+        if auth_header is None:
             self.send_response(401)
             self.send_header('WWW-Authenticate', 'Basic realm="' + ctx['realm'] + '"')
             self.send_header('Cache-Control', 'no-cache')
             self.end_headers()
-
             return True
 
-        ctx['action'] = 'decoding credentials'
+        # ctx['action'] = 'decoding credentials'
 
-        try:
-            auth_decoded = base64.b64decode(auth_header[6:])
-            if sys.version_info.major == 3: auth_decoded = auth_decoded.decode("utf-8")
-            user, passwd = auth_decoded.split(':', 1)
-
-        except:
-            self.auth_failed(ctx)
-            return True
+        # try:
+        #    auth_decoded = base64.b64decode(auth_header[6:])
+        #    if sys.version_info.major == 3: auth_decoded = auth_decoded.decode("utf-8")
+        #    user, passwd = auth_decoded.split(':', 1)
+        # except:
+        #    self.auth_failed(ctx)
+        #    return True
 
         ctx['user'] = user
-        ctx['pass'] = passwd
-
+        # ctx['pass'] = passwd
         # Continue request processing
         return False
 
@@ -188,11 +188,6 @@ class LDAPAuthHandler(AuthHandler):
             # request already processed
             return
 
-        ctx['action'] = 'empty password check'
-        if not ctx['pass']:
-            self.auth_failed(ctx, 'attempt to use empty password')
-            return
-
         try:
             # check that uri and baseDn are set
             # either from cli or a request
@@ -202,10 +197,9 @@ class LDAPAuthHandler(AuthHandler):
             if not ctx['basedn']:
                 self.log_message('LDAP baseDN is not set!')
                 return
-
             ctx['action'] = 'initializing LDAP connection'
-            ldap_obj = ldap.initialize(ctx['url']);
-
+            ldap_obj = ldap.initialize(ctx['url'])
+            self.log_message('ldap=%s' % str(ldap_obj)) 
             # Python-ldap module documentation advises to always
             # explicitely set the LDAP version to use after running
             # initialize() and recommends using LDAPv3. (LDAPv2 is
@@ -251,19 +245,18 @@ class LDAPAuthHandler(AuthHandler):
 
             user_entry = results[0]
             ldap_dn = user_entry[0]
-
+            self.log_message('%s' % str(user_entry))        
             if ldap_dn == None:
                 self.auth_failed(ctx, 'matched object has no dn')
                 return
 
-            self.log_message('attempting to bind using dn "%s"' % (ldap_dn))
+            # self.log_message('attempting to bind using dn "%s"' % (ldap_dn))
 
-            ctx['action'] = 'binding as an existing user "%s"' % ldap_dn
-
-            ldap_obj.bind_s(ldap_dn, ctx['pass'], ldap.AUTH_SIMPLE)
+            # ctx['action'] = 'binding as an existing user "%s"' % ldap_dn
+            # ldap_obj.bind_s(ldap_dn, ctx['pass'], ldap.AUTH_SIMPLE)
 
             self.log_message('Auth OK for user "%s"' % (ctx['user']))
-
+            # self.send_header('X-UTORGrouper', 'OK')
             # Successfully authenticated user
             self.send_response(200)
             self.end_headers()
@@ -333,7 +326,8 @@ if __name__ == '__main__':
              'binddn': ('X-Ldap-BindDN', args.binddn),
              'bindpasswd': ('X-Ldap-BindPass', args.bindpw),
              'cookiename': ('X-CookieName', args.cookie)
-    }
+    } 
+    
     LDAPAuthHandler.set_params(auth_params)
     server = AuthHTTPServer(Listen, LDAPAuthHandler)
     signal.signal(signal.SIGINT, exit_handler)
