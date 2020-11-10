@@ -1,6 +1,6 @@
 #!/bin/sh
 ''''[ -z $LOG ] && export LOG=/dev/stdout # '''
-''''which python  >/dev/null && exec python  -u "$0" "$@" >> $LOG 2>&1 # '''
+''''which python3  >/dev/null && exec python3  -u "$0" "$@" >> $LOG 2>&1 # '''
 
 # Copyright (C) 2014-2015 Nginx, Inc.
 
@@ -62,7 +62,7 @@ class AuthHandler(BaseHTTPRequestHandler):
         # auth_header = self.headers.get('Authorization')
         auth_header = self.headers.get('X-Ldap-Auth-User')
         user = auth_header
-        self.log_message('using username: %s' % user)
+        # self.log_message('using username: %s' % user)
         # auth_cookie = self.get_cookie(ctx['cookiename'])
 
         # if auth_cookie != None and auth_cookie != '':
@@ -74,8 +74,8 @@ class AuthHandler(BaseHTTPRequestHandler):
 
         # if auth_header is None or not auth_header.lower().startswith('basic '):
         if auth_header is None:
-            self.send_response(401)
-            self.send_header('WWW-Authenticate', 'Basic realm="' + ctx['realm'] + '"')
+            self.send_response(403)
+            # self.send_header('WWW-Authenticate', 'Basic realm="' + ctx['realm'] + '"')
             self.send_header('Cache-Control', 'no-cache')
             self.end_headers()
             return True
@@ -126,8 +126,8 @@ class AuthHandler(BaseHTTPRequestHandler):
             msg += ', login="%s"' % ctx['user']
 
         self.log_error(msg)
-        self.send_response(401)
-        self.send_header('WWW-Authenticate', 'Basic realm="' + ctx['realm'] + '"')
+        self.send_response(403)
+        # self.send_header('WWW-Authenticate', 'Basic realm="' + ctx['realm'] + '"')
         self.send_header('Cache-Control', 'no-cache')
         self.end_headers()
 
@@ -199,7 +199,7 @@ class LDAPAuthHandler(AuthHandler):
                 return
             ctx['action'] = 'initializing LDAP connection'
             ldap_obj = ldap.initialize(ctx['url'])
-            self.log_message('ldap=%s' % str(ldap_obj)) 
+            # self.log_message('ldap=%s' % str(ldap_obj)) 
             # Python-ldap module documentation advises to always
             # explicitely set the LDAP version to use after running
             # initialize() and recommends using LDAPv3. (LDAPv2 is
@@ -245,7 +245,7 @@ class LDAPAuthHandler(AuthHandler):
 
             user_entry = results[0]
             ldap_dn = user_entry[0]
-            self.log_message('%s' % str(user_entry))        
+            # self.log_message('%s' % str(user_entry))        
             if ldap_dn == None:
                 self.auth_failed(ctx, 'matched object has no dn')
                 return
